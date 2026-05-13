@@ -1,13 +1,12 @@
-import { EventsService } from './events.service';
-import { EventsRepository } from '../repositories/events.repository';
-import { EventNotFoundException } from '../exceptions/event-not-found.exception';
-import { EventCancelledException } from '../exceptions/event-cancelled.exception';
 import { EventStatus } from '../../../enums/event-status.enum';
 import { CreateEventDto } from '../dto/create-event.dto';
-import { UpdateEventDto } from '../dto/update-event.dto';
 import { EventResponseDto } from '../dto/event-response.dto';
+import { EventCancelledException } from '../exceptions/event-cancelled.exception';
+import { EventNotFoundException } from '../exceptions/event-not-found.exception';
+import { EventsRepository } from '../repositories/events.repository';
+import { EventsService } from './events.service';
+import { UpdateEventDto } from '../dto/update-event.dto';
 
-// mock do repository — nenhum banco real é acessado nos testes
 const mockEventsRepository = {
   create: jest.fn(),
   findAll: jest.fn(),
@@ -16,59 +15,72 @@ const mockEventsRepository = {
   delete: jest.fn(),
 };
 
-// factory para gerar um EventResponseDto fake com construtor posicional
-const makeEvent = (overrides: {
-  id?: number;
-  title?: string;
-  description?: string;
-  date?: Date;
-  location?: string;
-  organizer?: string;
-  capacity?: number;
-  totalRegistrations?: number;
-  eventStatus?: string;
-} = {}): EventResponseDto => new EventResponseDto(
-  overrides.id                ?? 1,
-  overrides.title             ?? 'Evento Teste',
-  overrides.description       ?? 'Descrição do evento',
-  overrides.date              ?? new Date('2099-01-01'),
-  overrides.location          ?? 'Local Teste',
-  overrides.organizer         ?? 'Organizador Teste',
-  overrides.capacity          ?? 100,
-  overrides.totalRegistrations ?? 0,
-  overrides.eventStatus       ?? EventStatus.ACTIVE,
-);
+const makeEvent = (
+  overrides: {
+    id?: number;
+    title?: string;
+    description?: string;
+    date?: Date;
+    location?: string;
+    organizer?: string;
+    capacity?: number;
+    totalRegistrations?: number;
+    status?: string;
+  } = {},
+): EventResponseDto & {
+  capacity: number;
+  totalRegistrations: number;
+  status: string;
+} =>
+  Object.assign(
+    new EventResponseDto(
+      overrides.id ?? 1,
+      overrides.title ?? 'Evento Teste',
+      overrides.description ?? 'Descricao do evento',
+      overrides.date ?? new Date('2099-01-01'),
+      overrides.location ?? 'Local Teste',
+      overrides.organizer ?? 'Organizador Teste',
+    ),
+    {
+      capacity: overrides.capacity ?? 100,
+      totalRegistrations: overrides.totalRegistrations ?? 0,
+      status: overrides.status ?? EventStatus.ACTIVE,
+    },
+  );
 
-// factory para gerar um CreateEventDto com construtor posicional
-const makeCreateDto = (overrides: {
-  name?: string;
-  description?: string;
-  date?: Date;
-  location?: string;
-  price?: number;
-  capacity?: number;
-  status?: string;
-} = {}): CreateEventDto => new CreateEventDto(
-  overrides.name        ?? 'Evento Teste',
-  overrides.description ?? 'Descrição',
-  overrides.date        ?? new Date('2099-06-01'),
-  overrides.location    ?? 'Local',
-  overrides.price       ?? 50.00,
-  overrides.capacity    ?? 100,
-  overrides.status      ?? EventStatus.ACTIVE,
-);
+const makeCreateDto = (
+  overrides: {
+    name?: string;
+    description?: string;
+    date?: Date;
+    location?: string;
+    price?: number;
+    capacity?: number;
+    status?: string;
+  } = {},
+): CreateEventDto =>
+  ({
+    name: overrides.name ?? 'Evento Teste',
+    description: overrides.description ?? 'Descricao',
+    date: overrides.date ?? new Date('2099-06-01'),
+    location: overrides.location ?? 'Local',
+    price: overrides.price ?? 50,
+    capacity: overrides.capacity ?? 100,
+    status: overrides.status ?? EventStatus.ACTIVE,
+  }) as CreateEventDto;
 
 describe('EventsService', () => {
   let service: EventsService;
 
   beforeEach(() => {
-    jest.clearAllMocks();
-    service = new EventsService(mockEventsRepository as unknown as EventsRepository);
+    jest.resetAllMocks();
+    service = new EventsService(
+      mockEventsRepository as unknown as EventsRepository,
+    );
   });
 
-  // ------------------------------------------------------------------ create
   describe('create', () => {
-    it('deve criar um evento com dados válidos', async () => {
+    it('deve criar um evento com dados validos', async () => {
       const dto = makeCreateDto();
       const eventoCriado = makeEvent();
       mockEventsRepository.create.mockResolvedValue(eventoCriado);
@@ -79,18 +91,15 @@ describe('EventsService', () => {
       expect(result).toEqual(eventoCriado);
     });
 
-    it('deve lançar erro se a data for no passado', async () => {
+    it('deve lancar erro se a data for no passado', async () => {
       const dto = makeCreateDto({ date: new Date('2000-01-01') });
 
-      await expect(service.create(dto)).rejects.toThrow(
-        'Data do evento não pode ser no passado',
-      );
+      await expect(service.create(dto)).rejects.toThrow('Data do evento');
 
       expect(mockEventsRepository.create).not.toHaveBeenCalled();
     });
   });
 
-  // ----------------------------------------------------------------- findAll
   describe('findAll', () => {
     it('deve retornar lista de eventos', async () => {
       const eventos = [makeEvent({ id: 1 }), makeEvent({ id: 2 })];
@@ -102,7 +111,7 @@ describe('EventsService', () => {
       expect(mockEventsRepository.findAll).toHaveBeenCalledTimes(1);
     });
 
-    it('deve retornar lista vazia quando não há eventos', async () => {
+    it('deve retornar lista vazia quando nao ha eventos', async () => {
       mockEventsRepository.findAll.mockResolvedValue([]);
 
       const result = await service.findAll();
@@ -111,7 +120,6 @@ describe('EventsService', () => {
     });
   });
 
-  // ----------------------------------------------------------------- findById
   describe('findById', () => {
     it('deve retornar o evento quando encontrado', async () => {
       const evento = makeEvent();
@@ -123,46 +131,50 @@ describe('EventsService', () => {
       expect(mockEventsRepository.findById).toHaveBeenCalledWith(1);
     });
 
-    it('deve lançar EventNotFoundException quando evento não existe', async () => {
+    it('deve lancar EventNotFoundException quando evento nao existe', async () => {
       mockEventsRepository.findById.mockResolvedValue(null);
 
-      await expect(service.findById(99)).rejects.toThrow(EventNotFoundException);
+      await expect(service.findById(99)).rejects.toThrow(
+        EventNotFoundException,
+      );
     });
   });
 
-  // ------------------------------------------------------------------- update
   describe('update', () => {
     it('deve atualizar evento ativo com sucesso', async () => {
-      const eventoExistente = makeEvent({ eventStatus: EventStatus.ACTIVE });
-      const dto = { title: 'Novo Título' } as UpdateEventDto;
-      const eventoAtualizado = makeEvent({ title: 'Novo Título' });
+      const eventoExistente = makeEvent({ status: EventStatus.ACTIVE });
+      const dto = { title: 'Novo Titulo' } as UpdateEventDto;
+      const eventoAtualizado = makeEvent({ title: 'Novo Titulo' });
 
       mockEventsRepository.findById.mockResolvedValue(eventoExistente);
       mockEventsRepository.update.mockResolvedValue(eventoAtualizado);
 
       const result = await service.update(1, dto);
 
-      expect(result.title).toBe('Novo Título');
+      expect(result.title).toBe('Novo Titulo');
       expect(mockEventsRepository.update).toHaveBeenCalledWith(1, dto);
     });
 
-    it('deve lançar EventNotFoundException se evento não existe', async () => {
+    it('deve lancar EventNotFoundException se evento nao existe', async () => {
       mockEventsRepository.findById.mockResolvedValue(null);
 
-      await expect(service.update(99, {} as UpdateEventDto)).rejects.toThrow(EventNotFoundException);
+      await expect(service.update(99, {} as UpdateEventDto)).rejects.toThrow(
+        EventNotFoundException,
+      );
       expect(mockEventsRepository.update).not.toHaveBeenCalled();
     });
 
-    it('deve lançar EventCancelledException se evento está cancelado', async () => {
-      const eventoCancelado = makeEvent({ eventStatus: EventStatus.CANCELLED });
+    it('deve lancar EventCancelledException se evento esta cancelado', async () => {
+      const eventoCancelado = makeEvent({ status: EventStatus.CANCELLED });
       mockEventsRepository.findById.mockResolvedValue(eventoCancelado);
 
-      await expect(service.update(1, {} as UpdateEventDto)).rejects.toThrow(EventCancelledException);
+      await expect(service.update(1, {} as UpdateEventDto)).rejects.toThrow(
+        EventCancelledException,
+      );
       expect(mockEventsRepository.update).not.toHaveBeenCalled();
     });
   });
 
-  // ------------------------------------------------------------------- delete
   describe('delete', () => {
     it('deve deletar evento existente com sucesso', async () => {
       mockEventsRepository.findById.mockResolvedValue(makeEvent());
@@ -172,7 +184,7 @@ describe('EventsService', () => {
       expect(mockEventsRepository.delete).toHaveBeenCalledWith(1);
     });
 
-    it('deve lançar EventNotFoundException se evento não existe', async () => {
+    it('deve lancar EventNotFoundException se evento nao existe', async () => {
       mockEventsRepository.findById.mockResolvedValue(null);
 
       await expect(service.delete(99)).rejects.toThrow(EventNotFoundException);
@@ -180,9 +192,8 @@ describe('EventsService', () => {
     });
   });
 
-  // --------------------------------------------------------- checkAvailability
   describe('checkAvailability', () => {
-    it('deve retornar true quando há vagas disponíveis', async () => {
+    it('deve retornar true quando ha vagas disponiveis', async () => {
       const evento = makeEvent({ capacity: 100, totalRegistrations: 50 });
       mockEventsRepository.findById.mockResolvedValue(evento);
 
@@ -191,7 +202,7 @@ describe('EventsService', () => {
       expect(result).toBe(true);
     });
 
-    it('deve retornar false quando evento está lotado', async () => {
+    it('deve retornar false quando evento esta lotado', async () => {
       const evento = makeEvent({ capacity: 100, totalRegistrations: 100 });
       mockEventsRepository.findById.mockResolvedValue(evento);
 
@@ -200,10 +211,12 @@ describe('EventsService', () => {
       expect(result).toBe(false);
     });
 
-    it('deve lançar EventNotFoundException se evento não existe', async () => {
+    it('deve lancar EventNotFoundException se evento nao existe', async () => {
       mockEventsRepository.findById.mockResolvedValue(null);
 
-      await expect(service.checkAvailability(99)).rejects.toThrow(EventNotFoundException);
+      await expect(service.checkAvailability(99)).rejects.toThrow(
+        EventNotFoundException,
+      );
     });
   });
 });

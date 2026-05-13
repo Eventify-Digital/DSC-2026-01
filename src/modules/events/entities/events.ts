@@ -29,7 +29,7 @@ export class EventEntity {
   organizer!: string;
 
   @Column({ type: 'varchar', default: EventStatus.ACTIVE })
-  status!: string;
+  eventStatus!: string; 
 
   @CreateDateColumn({ type: 'timestamp' })
   createdAt!: Date;

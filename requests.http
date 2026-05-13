@@ -1,0 +1,57 @@
+### Criar evento
+POST http://localhost:3001/events
+Content-Type: application/json
+
+### Criar evento
+POST http://localhost:3001/events
+Content-Type: application/json
+
+{
+  "name": "Show de Rock",
+  "description": "Um show incrível",
+  "date": "2099-12-01T20:00:00.000Z",
+  "location": "São Paulo - SP",
+  "price": 80.00,
+  "capacity": 200,
+  "status": "ACTIVE",
+  "organizer": "Yasmin"
+}
+
+### Listar todos os eventos
+GET http://localhost:3001/events
+
+### Buscar evento por id
+GET http://localhost:3001/events/1
+
+### Atualizar evento
+PUT http://localhost:3001/events/1
+Content-Type: application/json
+
+{
+  "name": "Show de Rock Atualizado"
+}
+
+### Verificar disponibilidade
+GET http://localhost:3001/events/1/availability
+
+### Deletar evento
+DELETE http://localhost:3001/events/1
+
+### Criar inscrição
+POST http://localhost:3001/registrations
+Content-Type: application/json
+
+{
+  "eventId": 1,
+  "userId": 1,
+  "registrationDate": "2099-11-01T10:00:00.000Z"
+}
+
+### Listar inscrições
+GET http://localhost:3001/registrations
+
+### Buscar inscrição por id
+GET http://localhost:3001/registrations/1
+
+### Cancelar inscrição
+DELETE http://localhost:3001/registrations/1
